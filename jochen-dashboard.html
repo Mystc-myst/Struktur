@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Command">
+<meta name="theme-color" content="#0a0a0f">
+<link rel="manifest" href="./manifest.json">
+<title>Jochen — Command Center</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&display=swap');
+  :root {
+    --bg: #0a0a0f; --surface: #13131a; --border: #1e1e2e;
+    --accent: #e8ff47; --accent2: #47c8ff; --accent3: #ff6b47;
+    --text: #f0f0f0; --muted: #666;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    background:var(--bg); color:var(--text); font-family:'DM Mono',monospace;
+    min-height:100vh; padding:max(env(safe-area-inset-top),24px) 16px max(env(safe-area-inset-bottom),60px);
+    overscroll-behavior:none;
+  }
+  header { margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:14px; display:flex; justify-content:space-between; align-items:flex-end; }
+  header h1 { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; letter-spacing:-1px; color:var(--accent); line-height:1; }
+  header p { font-size:9px; color:var(--muted); margin-top:4px; letter-spacing:1.5px; text-transform:uppercase; }
+  .date-badge { font-size:10px; color:var(--muted); letter-spacing:1px; }
+
+  /* INSTALL BANNERS */
+  #install-banner { display:none; background:#111100; border:1px solid var(--accent); border-radius:10px; padding:12px 14px; margin-bottom:14px; align-items:center; justify-content:space-between; gap:10px; }
+  #install-banner.show { display:flex; }
+  .install-text { font-size:11px; color:var(--accent); line-height:1.4; }
+  .install-text span { font-size:9px; color:var(--muted); display:block; margin-top:2px; }
+  .install-btn { background:var(--accent); color:var(--bg); border:none; border-radius:6px; padding:7px 12px; font-family:'Syne',sans-serif; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+  .dismiss-btn { background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; flex-shrink:0; padding:0 4px; }
+  #ios-hint { display:none; background:#111100; border:1px solid var(--accent); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:11px; color:var(--accent); line-height:1.6; }
+  #ios-hint.show { display:block; }
+  #ios-hint span { color:var(--muted); font-size:9px; display:block; margin-top:3px; }
+
+  /* TIMELINE */
+  .legend { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px; }
+  .legend-item { display:flex; align-items:center; gap:5px; font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .timeline-track { display:flex; margin-bottom:24px; }
+  .month-block { flex:1; padding:9px 7px; border:1px solid var(--border); border-right:none; background:var(--surface); }
+  .month-block:last-child { border-right:1px solid var(--border); border-radius:0 6px 6px 0; }
+  .month-block:first-child { border-radius:6px 0 0 6px; }
+  .month-block.current { border-color:var(--accent); background:#111100; }
+  .month-label { font-family:'Syne',sans-serif; font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .month-block.current .month-label { color:var(--accent); }
+  .deadline-dot { display:flex; align-items:flex-start; gap:5px; margin-bottom:3px; font-size:9px; line-height:1.3; }
+  .dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; margin-top:3px; }
+  .dot.app { background:var(--accent); } .dot.fisher { background:var(--accent2); }
+  .dot.study { background:var(--accent3); } .dot.personal { background:#b47fff; }
+
+  /* PILLARS */
+  .pillars { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
+  .pillar { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px; position:relative; overflow:hidden; }
+  .pillar::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .pillar.app::before { background:var(--accent); } .pillar.fisher::before { background:var(--accent2); }
+  .pillar.study::before { background:var(--accent3); } .pillar.personal::before { background:#b47fff; }
+  .pillar-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:9px; gap:4px; }
+  .pillar-title { font-family:'Syne',sans-serif; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; line-height:1.2; }
+  .pillar.app .pillar-title { color:var(--accent); } .pillar.fisher .pillar-title { color:var(--accent2); }
+  .pillar.study .pillar-title { color:var(--accent3); } .pillar.personal .pillar-title { color:#b47fff; }
+  .deadline-badge { font-size:8px; padding:2px 5px; border-radius:20px; letter-spacing:0.5px; text-transform:uppercase; white-space:nowrap; flex-shrink:0; }
+  .pillar.app .deadline-badge { background:#1a1a00; color:var(--accent); border:1px solid var(--accent); }
+  .pillar.fisher .deadline-badge { background:#001a1a; color:var(--accent2); border:1px solid var(--accent2); }
+  .pillar.study .deadline-badge { background:#1a0a00; color:var(--accent3); border:1px solid var(--accent3); }
+  .pillar.personal .deadline-badge { background:#0e001a; color:#b47fff; border:1px solid #b47fff; }
+  .task-list { list-style:none; }
+  .task-item { display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); cursor:pointer; transition:opacity 0.2s; user-select:none; }
+  .task-item:last-child { border-bottom:none; }
+  .task-item.done { opacity:0.3; }
+  .task-item.done .task-text { text-decoration:line-through; }
+  .checkbox { width:14px; height:14px; border:1px solid var(--muted); border-radius:3px; flex-shrink:0; margin-top:1px; display:flex; align-items:center; justify-content:center; }
+  .task-item.done .checkbox { background:var(--muted); border-color:var(--muted); }
+  .task-item.done .checkbox::after { content:'✓'; font-size:9px; color:var(--bg); }
+  .task-text { font-size:10px; line-height:1.4; }
+  .task-meta { font-size:8px; color:var(--muted); margin-top:1px; text-transform:uppercase; letter-spacing:0.5px; }
+  .add-task { display:flex; gap:6px; margin-top:7px; }
+  .add-task input { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:5px; padding:5px 7px; font-family:'DM Mono',monospace; font-size:10px; color:var(--text); outline:none; min-width:0; }
+  .add-task input::placeholder { color:var(--muted); }
+  .add-btn { background:var(--border); border:none; border-radius:5px; padding:5px 9px; color:var(--muted); font-size:14px; cursor:pointer; flex-shrink:0; }
+  .progress-bar { height:2px; background:var(--border); border-radius:2px; margin-top:8px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:2px; transition:width 0.4s ease; }
+  .pillar.app .progress-fill { background:var(--accent); } .pillar.fisher .progress-fill { background:var(--accent2); }
+  .pillar.study .progress-fill { background:var(--accent3); } .pillar.personal .progress-fill { background:#b47fff; }
+  .progress-label { font-size:8px; color:var(--muted); margin-top:2px; text-align:right; }
+
+  /* NOTES */
+  .notes-section { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:14px; }
+  .notes-title { font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:7px; }
+  .notes-area { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:5px; padding:8px; font-family:'DM Mono',monospace; font-size:11px; color:var(--text); resize:none; height:80px; outline:none; line-height:1.6; }
+  .save-note { font-size:9px; color:var(--muted); text-align:center; padding-bottom:16px; letter-spacing:1px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>COMMAND CENTER</h1>
+    <p>Apr → Jun 2026 · Three fronts.</p>
+  </div>
+  <div class="date-badge" id="dateBadge"></div>
+</header>
+
+<div id="install-banner">
+  <div class="install-text">Add to Home Screen<span>Works offline · Opens like an app</span></div>
+  <button class="install-btn" id="installBtn">Install</button>
+  <button class="dismiss-btn" id="dismissBtn">×</button>
+</div>
+
+<div id="ios-hint">
+  📲 Add to Home Screen
+  <span>Tap the Share icon (bottom of Safari) → "Add to Home Screen"</span>
+  <span>Then open from your home screen for the full app experience.</span>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="dot app"></div>App</div>
+  <div class="legend-item"><div class="dot fisher"></div>Fisher</div>
+  <div class="legend-item"><div class="dot study"></div>Study</div>
+  <div class="legend-item"><div class="dot personal"></div>Personal</div>
+</div>
+
+<div class="timeline-track">
+  <div class="month-block current">
+    <div class="month-label">April ←</div>
+    <div class="deadline-dot"><div class="dot app"></div><span>App stable</span></div>
+    <div class="deadline-dot"><div class="dot fisher"></div><span>Recruiter</span></div>
+  </div>
+  <div class="month-block">
+    <div class="month-label">May</div>
+    <div class="deadline-dot"><div class="dot personal"></div><span>Bergbahn</span></div>
+    <div class="deadline-dot"><div class="dot study"></div><span>28 Exam</span></div>
+  </div>
+  <div class="month-block">
+    <div class="month-label">June</div>
+    <div class="deadline-dot"><div class="dot fisher"></div><span>1 Answer</span></div>
+    <div class="deadline-dot"><div class="dot study"></div><span>DS result</span></div>
+  </div>
+</div>
+
+<div class="pillars" id="pillars"></div>
+
+<div class="notes-section">
+  <div class="notes-title">// brain dump</div>
+  <textarea class="notes-area" id="notes" placeholder="thoughts, ideas, anything..."></textarea>
+</div>
+
+<div class="save-note">// tap to check off · auto-saves</div>
+
+<script>
+document.getElementById('dateBadge').textContent = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+
+const notesEl = document.getElementById('notes');
+notesEl.value = localStorage.getItem('j_notes') || '';
+notesEl.addEventListener('input', () => localStorage.setItem('j_notes', notesEl.value));
+
+const DEFAULTS = {
+  app:{ label:"App", deadline:"End April", tasks:[
+    {text:"Fix WhatsApp delivery",meta:"core"},
+    {text:"Stable timetable view",meta:"core"},
+    {text:"Smooth clunky UX",meta:"polish"},
+    {text:"End-to-end device test",meta:"qa"},
+    {text:"Book Bergbahn meeting",meta:"sales"},
+    {text:"Prepare live demo",meta:"sales"},
+    {text:"Multi-team/huts feature",meta:"v2"}
+  ]},
+  fisher:{ label:"Fisher", deadline:"June 1", tasks:[
+    {text:"Recruiter call prep",meta:"prep"},
+    {text:"Fisher philosophy research",meta:"prep"},
+    {text:"AI in Controlling angle",meta:"prep"},
+    {text:"Send CV if requested",meta:"admin"},
+    {text:"Follow up by May 15",meta:"follow-up"}
+  ]},
+  study:{ label:"Duales Studium", deadline:"May 28", tasks:[
+    {text:"Apply Deloitte Frankfurt",meta:"priority"},
+    {text:"Apply DZ BANK Frankfurt",meta:"priority"},
+    {text:"Prep entrance exam",meta:"urgent"},
+    {text:"Gather Zeugnisse",meta:"admin"},
+    {text:"Motivationsschreiben",meta:"writing"}
+  ]},
+  personal:{ label:"Personal", deadline:"Ongoing", tasks:[
+    {text:"Plan Oberstdorf trip",meta:"may"},
+    {text:"Keep job stable w/ Armin",meta:"income"},
+    {text:"Excel basics — YouTube",meta:"skill"},
+    {text:"Controlling vocab DE",meta:"skill"}
+  ]}
+};
+
+let TASKS = (() => { try { const s=localStorage.getItem('j_tasks'); return s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULTS)); } catch { return JSON.parse(JSON.stringify(DEFAULTS)); } })();
+let CHECKED = (() => { try { return JSON.parse(localStorage.getItem('j_checked')||'{}'); } catch { return {}; } })();
+
+function saveTasks(){ try{localStorage.setItem('j_tasks',JSON.stringify(TASKS));}catch{} }
+function saveChecked(){ try{localStorage.setItem('j_checked',JSON.stringify(CHECKED));}catch{} }
+
+function render(){
+  const c = document.getElementById('pillars');
+  c.innerHTML = '';
+  Object.entries(TASKS).forEach(([key,pillar]) => {
+    const done = pillar.tasks.filter((_,i)=>CHECKED[key+'_'+i]).length;
+    const pct = pillar.tasks.length ? Math.round(done/pillar.tasks.length*100) : 0;
+    const div = document.createElement('div');
+    div.className = 'pillar '+key;
+    div.innerHTML = `
+      <div class="pillar-header">
+        <div class="pillar-title">${pillar.label}</div>
+        <div class="deadline-badge">${pillar.deadline}</div>
+      </div>
+      <ul class="task-list">${pillar.tasks.map((t,i)=>`
+        <li class="task-item ${CHECKED[key+'_'+i]?'done':''}" onclick="toggle('${key}',${i})">
+          <div class="checkbox"></div>
+          <div><div class="task-text">${t.text}</div><div class="task-meta">${t.meta}</div></div>
+        </li>`).join('')}
+      </ul>
+      <div class="add-task">
+        <input type="text" placeholder="add task..." id="inp_${key}" onkeydown="if(event.key==='Enter')add('${key}')">
+        <button class="add-btn" onclick="add('${key}')">+</button>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="progress-label">${pct}%</div>`;
+    c.appendChild(div);
+  });
+}
+
+function toggle(key,i){ CHECKED[key+'_'+i]=!CHECKED[key+'_'+i]; saveChecked(); render(); }
+function add(key){ const inp=document.getElementById('inp_'+key); const t=inp.value.trim(); if(!t)return; TASKS[key].tasks.push({text:t,meta:'custom'}); saveTasks(); inp.value=''; render(); }
+
+render();
+
+// PWA
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt=e;
+  document.getElementById('install-banner').classList.add('show');
+});
+document.getElementById('installBtn').addEventListener('click', async () => {
+  if(!deferredPrompt)return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  document.getElementById('install-banner').classList.remove('show');
+});
+document.getElementById('dismissBtn').addEventListener('click', () => {
+  document.getElementById('install-banner').classList.remove('show');
+});
+
+// iOS
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone=window.navigator.standalone;
+if(isIOS && !isStandalone && !localStorage.getItem('ios_dismissed')){
+  document.getElementById('ios-hint').classList.add('show');
+  setTimeout(()=>{ document.getElementById('ios-hint').classList.remove('show'); localStorage.setItem('ios_dismissed','1'); }, 12000);
+}
+
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
